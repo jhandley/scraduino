@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>protothreads/pt.h</file>
+        <file>protothreads/lc-addrlabels.h</file>
+        <file>protothreads/lc-switch.h</file>
+        <file>protothreads/lc.h</file>
+        <file>protothreads/pt-sem.h</file>
+    </qresource>
+</RCC>
