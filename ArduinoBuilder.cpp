@@ -16,10 +16,10 @@ ArduinoBuilder::ArduinoBuilder(const QString &inoFilePath,
     state_(START)
 {
     QSettings settings;
-    arduinoSdkPath_ = settings.value("arduinopath", "C:/Program Files/Arduino").toString();
-    boardType_ = settings.value("board", "leonardo").toString();
-    mcu_ = settings.value("mcu", "atmega32u4").toString();
-    cpuFreq_ = settings.value("cpufreq", "16000000").toString();
+    arduinoSdkPath_ = settings.value("ArduinoSdkPath").toString();
+    boardType_ = settings.value("board").toString();
+    mcu_ = settings.value("mcu").toString();
+    cpuFreq_ = settings.value("CpuFrequency").toString();
 }
 
 void ArduinoBuilder::build()

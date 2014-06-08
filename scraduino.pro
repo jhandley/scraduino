@@ -17,15 +17,18 @@ SOURCES += main.cpp\
     ScratchWebApi.cpp \
     Scratchcc.cpp \
     ArduinoBuilder.cpp \
-    ArduinoUploader.cpp
+    ArduinoUploader.cpp \
+    SettingsDialog.cpp
 
 HEADERS  += MainWindow.h \
     ScratchWebApi.h \
     Scratchcc.h \
     ArduinoBuilder.h \
-    ArduinoUploader.h
+    ArduinoUploader.h \
+    SettingsDialog.h
 
-FORMS    += MainWindow.ui
+FORMS    += MainWindow.ui \
+    SettingsDialog.ui
 
 RESOURCES += \
     resource.qrc

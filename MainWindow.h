@@ -22,6 +22,7 @@ public:
     
 private slots:
     void on_pushButtonRun_clicked();
+    void showSettingsDialog();
     void projectLoaded(const QString &projectSource);
     void projectLoadError(const QString &errorMessage);
     void scratchccComplete(bool ok, const QString &error);
@@ -29,6 +30,9 @@ private slots:
     void uploadComplete(bool ok, const QString &error);
 
 private:
+
+    void initSettings();
+
     Ui::MainWindow *ui;
     QString projectPath_;
     QString inoFilePath_;

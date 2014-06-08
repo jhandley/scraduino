@@ -13,7 +13,7 @@ ArduinoUploader::ArduinoUploader(const QString &hexFilePath, const QString &comP
 void ArduinoUploader::upload()
 {
     QSettings settings;
-    QString boardType = settings.value("board", "leonardo").toString();
+    QString boardType = settings.value("board").toString();
 
     // need to do a little dance for Leonardo and derivatives:
     // open then close the port at the magic baudrate (usually 1200 bps) first
@@ -127,8 +127,8 @@ void ArduinoUploader::runAvrDude()
 {
     qDebug("Running AVR dude...");
     QSettings settings;
-    QString arduinoSdkPath = settings.value("arduinopath", "C:/Program Files/Arduino").toString();
-    QString mcu = settings.value("mcu", "atmega32u4").toString();
+    QString arduinoSdkPath = settings.value("ArduinoSdkPath").toString();
+    QString mcu = settings.value("mcu").toString();
 
 #ifdef Q_OS_WIN
 #define SERIAL_PORT_PREFIX "\\\\.\\"

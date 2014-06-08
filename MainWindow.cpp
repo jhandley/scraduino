@@ -9,15 +9,21 @@
 #include "ArduinoBuilder.h"
 #include "ArduinoUploader.h"
 #include <QSerialPortInfo>
+#include "SettingsDialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
+    initSettings();
+
     ui->setupUi(this);
     QSettings settings;
     QString lastProjectId = settings.value("lastProjectId", "22951621").toString();
     ui->lineEditProjectId->setText(lastProjectId);
+
+    connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(close()));
+    connect(ui->actionSettings, SIGNAL(triggered()), this, SLOT(showSettingsDialog()));
 
     scratchApi_ = new ScratchWebApi(this);
     connect(scratchApi_, SIGNAL(projectLoaded(QString)), SLOT(projectLoaded(QString)));
@@ -55,6 +61,12 @@ void MainWindow::on_pushButtonRun_clicked()
         return;
     }
     scratchApi_->loadProject(projectId);
+}
+
+void MainWindow::showSettingsDialog()
+{
+    SettingsDialog dlg;
+    dlg.exec();
 }
 
 void MainWindow::projectLoaded(const QString &projectSource)
@@ -116,4 +128,20 @@ void MainWindow::uploadComplete(bool ok, const QString &error)
         qDebug("Uploaded");
     else
         qDebug("Upload error: %s", qPrintable(error));
+}
+
+void MainWindow::initSettings()
+{
+    // set the default values for settings vars in one place
+    QSettings settings;
+    if (!settings.contains("ArduinoSdkPath"))
+        settings.setValue("ArduinoSdkPath", "C:/Program Files/Arduino");
+    if (!settings.contains("board"))
+        settings.setValue("board", "leonardo");
+    if (!settings.contains("mcu"))
+        settings.setValue("mcu", "atmega32u4");
+    if (!settings.contains("CpuFrequency"))
+        settings.setValue("CpuFrequency", "16000000");
+    if (!settings.contains("ScratchccPath"))
+        settings.setValue("ScratchccPath", "C:/Users/Josh/Documents/GitHub/scratchcc");
 }

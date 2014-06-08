@@ -2,6 +2,7 @@
 #include <QProcess>
 #include <QTemporaryFile>
 #include <QDir>
+#include <QSettings>
 
 Scratchcc::Scratchcc(const QString &sourceFile, const QString &resultFile, QObject *parent) :
     QObject(parent),
@@ -12,13 +13,15 @@ Scratchcc::Scratchcc(const QString &sourceFile, const QString &resultFile, QObje
 
 void Scratchcc::compile()
 {
+    QSettings settings;
+    QString scratchccPath = QDir::fromNativeSeparators(settings.value("ScratchccPath").toString());
     compileProcess_ = new QProcess(this);
     compileProcess_->setProcessChannelMode(QProcess::ForwardedChannels);
     connect(compileProcess_, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(processFinished(int,QProcess::ExitStatus)));
     connect(compileProcess_, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
-    compileProcess_->start("elixir.bat", QStringList() << "-pa" << "C:/Users/Josh/Documents/GitHub/scratchcc/_build/dev/lib/scratchcc/ebin" <<
-            "-pa" << "C:/Users/Josh/Documents/GitHub/scratchcc/_build/dev/lib/jsex/ebin" <<
-            "-pa" << "C:/Users/Josh/Documents/GitHub/scratchcc/_build/dev/lib/jsx/ebin" <<
+    compileProcess_->start("elixir.bat", QStringList() << "-pa" << scratchccPath + "/_build/dev/lib/scratchcc/ebin" <<
+            "-pa" << scratchccPath + "/_build/dev/lib/jsex/ebin" <<
+            "-pa" << scratchccPath + "/_build/dev/lib/jsx/ebin" <<
             "-e" << QString("Scratchcc.doit(\"%1\", \"%2\")").arg(QDir::fromNativeSeparators(source_)).arg(QDir::fromNativeSeparators(dest_)) <<
                            "-e" << "\":init.stop\"");
 }
