@@ -135,7 +135,11 @@ void MainWindow::initSettings()
     // set the default values for settings vars in one place
     QSettings settings;
     if (!settings.contains("ArduinoSdkPath"))
+#ifdef Q_OS_WIN
         settings.setValue("ArduinoSdkPath", "C:/Program Files/Arduino");
+#else
+        settings.setValue("ArduinoSdkPath", "/usr/share/arduino");
+#endif
     if (!settings.contains("board"))
         settings.setValue("board", "leonardo");
     if (!settings.contains("mcu"))
@@ -143,5 +147,9 @@ void MainWindow::initSettings()
     if (!settings.contains("CpuFrequency"))
         settings.setValue("CpuFrequency", "16000000");
     if (!settings.contains("ScratchccPath"))
+#ifdef Q_OS_WIN
         settings.setValue("ScratchccPath", "C:/Users/Josh/Documents/GitHub/scratchcc");
+#else
+        settings.setValue("ScratchccPath", "~/scratchcc");
+#endif
 }

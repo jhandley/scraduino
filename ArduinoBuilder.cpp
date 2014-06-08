@@ -144,6 +144,7 @@ void ArduinoBuilder::compile()
         }
         QStringList args = compileFlags;
         args << sourceFile << "-o" << intermediateFilePath_ + QDir::separator() + QFileInfo(sourceFile).baseName() + ".o";
+        qDebug("%s %s", qPrintable(compiler), qPrintable(args.join(' ')));
         QProcess *compileProcess = new QProcess(this);
         connect(compileProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
         connect(compileProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
@@ -157,12 +158,13 @@ void ArduinoBuilder::link()
     qDebug("Linking...");
     QString linker = arduinoSdkPath_ + "/hardware/tools/avr/bin/avr-gcc";
     QStringList args;
-    args << "-g" << "-Os" << "-Wl" << "--gc-sections"
+    args << "-Os" << "-Wl,--gc-sections"
          << "-mmcu="+mcu_ << "-lm"
          << "-o" << intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".elf";
     foreach (QString sourceFile, sourceFiles_) {
         args << intermediateFilePath_ +  QDir::separator() + QFileInfo(sourceFile).baseName() + ".o";
     }
+    qDebug("%s %s", qPrintable(linker), qPrintable(args.join(' ')));
     QProcess *linkerProcess = new QProcess(this);
     connect(linkerProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
     connect(linkerProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
@@ -172,7 +174,6 @@ void ArduinoBuilder::link()
 
 void ArduinoBuilder::objcopy1()
 {
-    // %ARDUINO_PATH%\hardware\tools\avr\bin\avr-objcopy -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0 %1.elf %1.eep
     qDebug("Build hex step 1...");
     QString objcopy = arduinoSdkPath_ + "/hardware/tools/avr/bin/avr-objcopy";
     QStringList args;
@@ -181,6 +182,7 @@ void ArduinoBuilder::objcopy1()
          << "--change-section-lma" << ".eeprom=0"
          << intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".elf"
          << intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".eep";
+    qDebug("%s %s", qPrintable(objcopy), qPrintable(args.join(' ')));
     QProcess *objcopyProcess = new QProcess(this);
     connect(objcopyProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
     connect(objcopyProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
@@ -197,6 +199,7 @@ void ArduinoBuilder::objcopy2()
     args << "-O" << "ihex" << "-R" << ".eeprom"
          << intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".elf"
          << hexFilePath_;
+    qDebug("%s %s", qPrintable(objcopy), qPrintable(args.join(' ')));
     QProcess *objcopyProcess = new QProcess(this);
     connect(objcopyProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
     connect(objcopyProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));

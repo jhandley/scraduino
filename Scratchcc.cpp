@@ -19,7 +19,13 @@ void Scratchcc::compile()
     compileProcess_->setProcessChannelMode(QProcess::ForwardedChannels);
     connect(compileProcess_, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(processFinished(int,QProcess::ExitStatus)));
     connect(compileProcess_, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
-    compileProcess_->start("elixir.bat", QStringList() << "-pa" << scratchccPath + "/_build/dev/lib/scratchcc/ebin" <<
+#ifdef Q_OS_WIN
+    QString elixerExecutable = "elixir.bat";
+#else
+    QString elixerExecutable = "elixir";
+#endif
+
+    compileProcess_->start(elixerExecutable, QStringList() << "-pa" << scratchccPath + "/_build/dev/lib/scratchcc/ebin" <<
             "-pa" << scratchccPath + "/_build/dev/lib/jsex/ebin" <<
             "-pa" << scratchccPath + "/_build/dev/lib/jsx/ebin" <<
             "-e" << QString("Scratchcc.doit(\"%1\", \"%2\")").arg(QDir::fromNativeSeparators(source_)).arg(QDir::fromNativeSeparators(dest_)) <<

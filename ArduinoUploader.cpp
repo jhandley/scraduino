@@ -117,7 +117,8 @@ QStringList ArduinoUploader::listPorts() const
     QStringList ports;
     qDebug("Looking for serial port devices:");
     foreach (const QSerialPortInfo &portInfo, QSerialPortInfo::availablePorts()) {
-        qDebug("%s: %s", qPrintable(portInfo.portName()), qPrintable(portInfo.description()));
+        qDebug("%s: %s", qPrintable(portInfo.portName()),
+                            qPrintable(portInfo.description()));
         ports << portInfo.portName();
     }
     return ports;
@@ -131,16 +132,18 @@ void ArduinoUploader::runAvrDude()
     QString mcu = settings.value("mcu").toString();
 
 #ifdef Q_OS_WIN
-#define SERIAL_PORT_PREFIX "\\\\.\\"
+#define AVRDUDE_CONF "/hardware/tools/avr/etc/avrdude.conf"
 #else
-#define SERIAL_PORT_PREFIX ""
+#define AVRDUDE_CONF "/hardware/tools/avrdude.conf"
 #endif
+
+    QString serialPortPath = QSerialPortInfo(comPort_).systemLocation();
 
     QString avrDudePath = arduinoSdkPath + "/hardware/tools/avr/bin/avrdude";
     QStringList args;
-    args << "-C" + arduinoSdkPath + "/hardware/tools/avr/etc/avrdude.conf"
+    args << "-C" + arduinoSdkPath + AVRDUDE_CONF
          << "-v" << "-v" << "-v" << "-v" << "-p" + mcu << "-cavr109"
-         << "-P"SERIAL_PORT_PREFIX + comPort_ << "-b57600"
+         << "-P" + serialPortPath << "-b57600"
          << "-D" << "-Uflash:w:" + hexFilePath_ + ":i";
     avrDudeProcess_ = new QProcess(this);
     avrDudeProcess_->setProcessChannelMode(QProcess::ForwardedChannels);
