@@ -32,18 +32,18 @@ void Scratchcc::compile()
                            "-e" << "\":init.stop\"");
 }
 
-void Scratchcc::processError(QProcess::ProcessError error)
+void Scratchcc::processError(QProcess::ProcessError e)
 {
-    Q_UNUSED(error);
+    Q_UNUSED(e);
     QString errorMessage = compileProcess_->errorString();
-    emit complete(false, errorMessage);
+    emit error(errorMessage);
 }
 
 void Scratchcc::processFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
     if (exitCode == 0 && exitStatus == QProcess::NormalExit) {
-        emit complete(true, "");
+        emit complete();
     } else {
-        emit complete(false, QString("Compile process failed with code %1").arg(exitCode));
+        emit error(QString("Compile process failed with code %1").arg(exitCode));
     }
 }

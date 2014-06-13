@@ -11,6 +11,7 @@ class ScratchWebApi;
 class Scratchcc;
 class ArduinoBuilder;
 class ArduinoUploader;
+class QMovie;
 
 class MainWindow : public QMainWindow
 {
@@ -24,14 +25,16 @@ private slots:
     void on_pushButtonRun_clicked();
     void showSettingsDialog();
     void projectLoaded(const QString &projectSource);
-    void projectLoadError(const QString &errorMessage);
-    void scratchccComplete(bool ok, const QString &error);
-    void buildComplete(bool ok, const QString &error);
-    void uploadComplete(bool ok, const QString &error);
+    void scratchccComplete();
+    void buildComplete();
+    void uploadComplete();
+    void checkBoardConnection();
+    void buildError(const QString &error);
 
 private:
 
     void initSettings();
+    void cleanup();
 
     Ui::MainWindow *ui;
     QString projectPath_;
@@ -42,6 +45,7 @@ private:
     Scratchcc *scratchcc_;
     ArduinoBuilder *arduinoBuilder_;
     ArduinoUploader *uploader_;
+    QTimer *boardConnectionTimer_;
 };
 
 #endif // MAINWINDOW_H

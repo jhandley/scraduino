@@ -10,14 +10,22 @@
 #include "ArduinoUploader.h"
 #include <QSerialPortInfo>
 #include "SettingsDialog.h"
+#include <QMovie>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
+    ui(new Ui::MainWindow),
+    scratchApi_(0),
+    scratchcc_(0),
+    arduinoBuilder_(0),
+    uploader_(0)
 {
     initSettings();
 
     ui->setupUi(this);
+
+    ui->labelBuildError->setText(QString());
+
     QSettings settings;
     QString lastProjectId = settings.value("lastProjectId", "22951621").toString();
     ui->lineEditProjectId->setText(lastProjectId);
@@ -26,13 +34,21 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionSettings, SIGNAL(triggered()), this, SLOT(showSettingsDialog()));
 
     scratchApi_ = new ScratchWebApi(this);
-    connect(scratchApi_, SIGNAL(projectLoaded(QString)), SLOT(projectLoaded(QString)));
-    connect(scratchApi_, SIGNAL(error(QString)), SLOT(projectLoadError(QString)));
+    connect(scratchApi_, SIGNAL(complete(QString)), SLOT(projectLoaded(QString)));
+    connect(scratchApi_, SIGNAL(error(QString)), SLOT(buildError(QString)));
+
+    checkBoardConnection();
+
+    boardConnectionTimer_ = new QTimer(this);
+    boardConnectionTimer_->setInterval(3000);
+    connect(boardConnectionTimer_, SIGNAL(timeout()), SLOT(checkBoardConnection()));
+    boardConnectionTimer_->start();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    cleanup();
 }
 
 void MainWindow::on_pushButtonRun_clicked()
@@ -46,20 +62,19 @@ void MainWindow::on_pushButtonRun_clicked()
     QSettings settings;
     settings.setValue("lastProjectId", projectId);
 
-    comPort_.clear();
-    qDebug("Looking for serial port devices:");
-    foreach (const QSerialPortInfo &portInfo, QSerialPortInfo::availablePorts()) {
-        qDebug("%s: %s", qPrintable(portInfo.portName()), qPrintable(portInfo.description()));
-        if (portInfo.description().startsWith("Arduino")) {
-            comPort_ = portInfo.portName();
-            break;
-        }
-    }
     if (comPort_.isEmpty()) {
         QMessageBox msgBox(QMessageBox::Warning, "Error", "No Arduino connected. Please plug one in.", QMessageBox::Ok);
         msgBox.exec();
         return;
     }
+
+    ui->labelBuildError->setText(QString());
+    QMovie *movie = new QMovie(":/assets/animatedprogress.gif");
+    movie->setCacheMode(QMovie::CacheAll);
+    ui->labelMainIcon->setMovie(movie);
+    movie->start();
+    ui->labelMainCaption->setText("Getting project from Scratch...");
+    ui->pushButtonRun->setEnabled(false);
     scratchApi_->loadProject(projectId);
 }
 
@@ -72,6 +87,7 @@ void MainWindow::showSettingsDialog()
 void MainWindow::projectLoaded(const QString &projectSource)
 {
     qDebug("Downloaded project");
+    ui->labelMainCaption->setText("Converting to C...");
     QString projectId = ui->lineEditProjectId->text();
     QSettings settings;
     QString boardType = settings.value("board", "leonardo").toString();
@@ -87,47 +103,72 @@ void MainWindow::projectLoaded(const QString &projectSource)
 
     inoFilePath_ = projectPath_ + QDir::separator() + "scratch.ino";
     scratchcc_ = new Scratchcc(scratchFilePath, inoFilePath_, this);
-    connect(scratchcc_, SIGNAL(complete(bool,QString)), SLOT(scratchccComplete(bool,QString)));
+    connect(scratchcc_, SIGNAL(complete()), SLOT(scratchccComplete()));
+    connect(scratchcc_, SIGNAL(error(QString)), SLOT(buildError(QString)));
     scratchcc_->compile();
 }
 
-void MainWindow::projectLoadError(const QString &errorMessage)
+void MainWindow::scratchccComplete()
 {
-    qDebug("%s", qPrintable(errorMessage));
+    qDebug("Converted to C");
+    ui->labelMainCaption->setText("Compiling C code for Arduino...");
+
+    hexFilePath_ = projectPath_ + QDir::separator() + "scratch.hex";
+    arduinoBuilder_ = new ArduinoBuilder(inoFilePath_, hexFilePath_, projectPath_, this);
+    connect(arduinoBuilder_, SIGNAL(complete()), SLOT(buildComplete()));
+    connect(arduinoBuilder_, SIGNAL(error(QString)), SLOT(buildError(QString)));
+    arduinoBuilder_->build();
 }
 
-void MainWindow::scratchccComplete(bool ok, const QString &error)
+void MainWindow::buildComplete()
 {
-    if (ok) {
-        qDebug("Converted to C");
-        hexFilePath_ = projectPath_ + QDir::separator() + "scratch.hex";
-        arduinoBuilder_ = new ArduinoBuilder(inoFilePath_, hexFilePath_, projectPath_, this);
-        connect(arduinoBuilder_, SIGNAL(complete(bool,QString)), SLOT(buildComplete(bool,QString)));
-        arduinoBuilder_->build();
-    } else {
-        qDebug("Scratchcc error: %s", qPrintable(error));
+    qDebug("Built hex file");
+    ui->labelMainCaption->setText("Uploading to Arduino...");
+    uploader_ = new ArduinoUploader(hexFilePath_, comPort_, this);
+    connect(uploader_, SIGNAL(complete()), SLOT(uploadComplete()));
+    connect(uploader_, SIGNAL(error(QString)), SLOT(buildError(QString)));
+    uploader_->upload();
+}
+
+void MainWindow::uploadComplete()
+{
+    ui->labelMainIcon->setPixmap(QPixmap(":/assets/happy.png"));
+    ui->labelMainCaption->setText("It worked!");
+    cleanup();
+    qDebug("Uploaded");
+    ui->pushButtonRun->setEnabled(true);
+}
+
+void MainWindow::checkBoardConnection()
+{
+    QString connectedPortName;
+    QString connectedPortDescription;
+    foreach (const QSerialPortInfo &portInfo, QSerialPortInfo::availablePorts()) {
+        if (portInfo.description().startsWith("Arduino")) {
+            connectedPortName = portInfo.portName();
+            connectedPortDescription = portInfo.description();
+            break;
+        }
     }
-    scratchcc_->deleteLater();
-}
 
-void MainWindow::buildComplete(bool ok, const QString &error)
-{
-    if (ok) {
-        qDebug("Built hex file");
-        uploader_ = new ArduinoUploader(hexFilePath_, comPort_, this);
-        connect(uploader_, SIGNAL(complete(bool,QString)), SLOT(uploadComplete(bool,QString)));
-        uploader_->upload();
-    } else {
-        qDebug("Build error: %s", qPrintable(error));
+    if (connectedPortName != comPort_) {
+        comPort_ = connectedPortName;
+        if (comPort_.isEmpty()) {
+            ui->labelBoardConnectionStatus->setText("No Arduino Connected.");
+            ui->labelBoardConnectionStatusIcon->setPixmap(QPixmap(":/assets/warning.png"));
+        } else {
+            ui->labelBoardConnectionStatus->setText(QString("%1 on %2").arg(connectedPortDescription).arg(connectedPortName));
+            ui->labelBoardConnectionStatusIcon->setPixmap(QPixmap(":/assets/checkmark.png"));
+        }
     }
 }
 
-void MainWindow::uploadComplete(bool ok, const QString &error)
+void MainWindow::buildError(const QString &error)
 {
-    if (ok)
-        qDebug("Uploaded");
-    else
-        qDebug("Upload error: %s", qPrintable(error));
+    ui->labelMainIcon->setPixmap(QPixmap(":/assets/bug.png"));
+    ui->labelMainCaption->setText("Something went wrong.");
+    ui->labelBuildError->setText(error);
+    ui->pushButtonRun->setEnabled(true);
 }
 
 void MainWindow::initSettings()
@@ -152,4 +193,20 @@ void MainWindow::initSettings()
 #else
         settings.setValue("ScratchccPath", "~/scratchcc");
 #endif
+}
+
+void MainWindow::cleanup()
+{
+    if (scratchcc_) {
+        scratchcc_->deleteLater();
+        scratchcc_ = 0;
+    }
+    if (arduinoBuilder_) {
+        arduinoBuilder_->deleteLater();
+        arduinoBuilder_ = 0;
+    }
+    if (uploader_) {
+        uploader_->deleteLater();
+        uploader_ = 0;
+    }
 }

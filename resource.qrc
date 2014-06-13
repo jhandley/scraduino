@@ -5,5 +5,11 @@
         <file>protothreads/lc-switch.h</file>
         <file>protothreads/lc.h</file>
         <file>protothreads/pt-sem.h</file>
+        <file>assets/animatedprogress.gif</file>
+        <file>assets/projnum.png</file>
+        <file>assets/happy.png</file>
+        <file>assets/bug.png</file>
+        <file>assets/checkmark.png</file>
+        <file>assets/warning.png</file>
     </qresource>
 </RCC>

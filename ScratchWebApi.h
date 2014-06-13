@@ -12,7 +12,7 @@ public:
     
 signals:
     
-    void projectLoaded(const QString& projectText);
+    void complete(const QString& projectText);
     void error(const QString& errorMessage);
 
 public slots:

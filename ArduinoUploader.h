@@ -15,7 +15,8 @@ public:
     
 signals:
 
-    void complete(bool ok, const QString &error);
+    void complete();
+    void error(const QString &error);
 
 public slots:
 

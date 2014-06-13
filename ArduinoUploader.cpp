@@ -34,7 +34,7 @@ void ArduinoUploader::checkPort()
 
     if (portWaitTimeElapsedMs_ > 10000) {
         // give up
-        emit complete(false, "Unable to find Leonardo port. Try unplug/replug/reset/prayer.");
+        emit error("Unable to find Leonardo port. Try unplug/replug/reset/prayer.");
         return;
     }
 
@@ -74,18 +74,21 @@ void ArduinoUploader::checkPort()
     }
 }
 
-void ArduinoUploader::avrDudeError(QProcess::ProcessError error)
+void ArduinoUploader::avrDudeError(QProcess::ProcessError e)
 {
-    Q_UNUSED(error);
-    emit complete(false, avrDudeProcess_->errorString());
+    Q_UNUSED(e);
+    emit error(avrDudeProcess_->errorString());
 }
 
 void ArduinoUploader::avrDudeProcessFinished(int exitCode)
 {
     if (exitCode != 0) {
         QByteArray errors = avrDudeProcess_->readAllStandardError();
-        emit complete(false, QString::fromUtf8(errors));
+        emit error(QString::fromUtf8(errors));
+    } else {
+        emit complete();
     }
+
 }
 
 void ArduinoUploader::findLeonardoPort()

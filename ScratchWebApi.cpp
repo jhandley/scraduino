@@ -26,7 +26,7 @@ void ScratchWebApi::handleLoadProjectReply()
     if (!hasError(reply)) {
 
         QString projectSource = reply->readAll();
-        emit projectLoaded(projectSource);
+        emit complete(projectSource);
 
     } else {
         handleError(reply);

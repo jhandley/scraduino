@@ -114,7 +114,7 @@ void ArduinoBuilder::processFinished(int exitCode)
         break;
     case OBJCOPY2:
         state_ = DONE;
-        emit complete(true, QString());
+        emit complete();
         break;
     case DONE:
         break;
@@ -215,5 +215,5 @@ void ArduinoBuilder::die(const QString &errorMessage)
         process->kill();
     }
 
-    emit complete(false, errorMessage);
+    emit error(errorMessage);
 }
