@@ -26,14 +26,14 @@ void ArduinoBuilder::build()
 {
     QFile inoFile(inoFilePath_);
     if (!inoFile.open(QFile::ReadOnly)) {
-        die(QString("Unable to open source file %1").arg(inoFilePath_));
+        emit error(QString("Unable to open source file %1").arg(inoFilePath_));
         return;
     }
 
     QString cppSourcePath = intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".cpp";
     QFile cppSourceFile(cppSourcePath);
     if (!cppSourceFile.open(QFile::WriteOnly)) {
-        die(QString("Unable to open file %1 for writing").arg(cppSourcePath));
+        emit error(QString("Unable to open file %1 for writing").arg(cppSourcePath));
         return;
     }
 
@@ -82,7 +82,9 @@ void ArduinoBuilder::processError(QProcess::ProcessError error)
 {
     Q_UNUSED(error);
     QProcess *process = qobject_cast<QProcess*>(sender());
-    die(process->errorString());
+    processes_.removeOne(process);
+    process->deleteLater();
+    dieLater(process->errorString());
 }
 
 void ArduinoBuilder::processFinished(int exitCode)
@@ -90,7 +92,7 @@ void ArduinoBuilder::processFinished(int exitCode)
     QProcess *process = qobject_cast<QProcess*>(sender());
     if (exitCode != 0) {
         QByteArray errors = process->readAllStandardError();
-        die(QString::fromUtf8(errors));
+        dieLater(QString::fromUtf8(errors));
     }
     processes_.removeOne(process);
     process->deleteLater();
@@ -119,6 +121,13 @@ void ArduinoBuilder::processFinished(int exitCode)
     case DONE:
         break;
     case ERROR:
+        // Wait for all processes to finish before
+        // emitting the error so that we don't try to delete
+        // QProcess of a running process.
+        if (processes_.empty()) {
+            state_ = DONE;
+            emit error(processErrorMessage_);
+        }
         break;
     }
 }
@@ -140,12 +149,12 @@ void ArduinoBuilder::compile()
         } else if (sourceFile.endsWith(".cpp")) {
             compiler = cppCompiler;
         } else {
-            die(QString("Invalid source file extension must be .c or .cpp: %1").arg(sourceFile));
+            dieLater(QString("Invalid source file extension must be .c or .cpp: %1").arg(sourceFile));
         }
         QStringList args = compileFlags;
         args << sourceFile << "-o" << intermediateFilePath_ + QDir::separator() + QFileInfo(sourceFile).baseName() + ".o";
         qDebug("%s %s", qPrintable(compiler), qPrintable(args.join(' ')));
-        QProcess *compileProcess = new QProcess(this);
+        QProcess *compileProcess = new QProcess();
         connect(compileProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
         connect(compileProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
         processes_ << compileProcess;
@@ -165,7 +174,7 @@ void ArduinoBuilder::link()
         args << intermediateFilePath_ +  QDir::separator() + QFileInfo(sourceFile).baseName() + ".o";
     }
     qDebug("%s %s", qPrintable(linker), qPrintable(args.join(' ')));
-    QProcess *linkerProcess = new QProcess(this);
+    QProcess *linkerProcess = new QProcess();
     connect(linkerProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
     connect(linkerProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
     processes_ << linkerProcess;
@@ -183,7 +192,7 @@ void ArduinoBuilder::objcopy1()
          << intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".elf"
          << intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".eep";
     qDebug("%s %s", qPrintable(objcopy), qPrintable(args.join(' ')));
-    QProcess *objcopyProcess = new QProcess(this);
+    QProcess *objcopyProcess = new QProcess();
     connect(objcopyProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
     connect(objcopyProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
     processes_ << objcopyProcess;
@@ -200,20 +209,21 @@ void ArduinoBuilder::objcopy2()
          << intermediateFilePath_ + QDir::separator() + QFileInfo(inoFilePath_).baseName() + ".elf"
          << hexFilePath_;
     qDebug("%s %s", qPrintable(objcopy), qPrintable(args.join(' ')));
-    QProcess *objcopyProcess = new QProcess(this);
+    QProcess *objcopyProcess = new QProcess();
     connect(objcopyProcess, SIGNAL(finished(int)), SLOT(processFinished(int)));
     connect(objcopyProcess, SIGNAL(error(QProcess::ProcessError)), SLOT(processError(QProcess::ProcessError)));
     processes_ << objcopyProcess;
     objcopyProcess->start(objcopy, args);
 }
 
-void ArduinoBuilder::die(const QString &errorMessage)
+void ArduinoBuilder::dieLater(const QString &errorMessage)
 {
-    state_ = ERROR;
-    foreach (QProcess *process, processes_) {
-        process->disconnect(this);
-        process->kill();
+    // Wait for all processes to complete before emiting the error
+    // so that we don't try to delete QProcess of running processes.
+    if (processes_.isEmpty()) {
+        emit error(errorMessage);
+    } else {
+        state_ = ERROR;
+        processErrorMessage_ = errorMessage;
     }
-
-    emit error(errorMessage);
 }

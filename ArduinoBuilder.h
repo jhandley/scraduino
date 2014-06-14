@@ -31,7 +31,7 @@ private:
     void link();
     void objcopy1();
     void objcopy2();
-    void die(const QString &errorMessage);
+    void dieLater(const QString &errorMessage);
 
     QString inoFilePath_;
     QString hexFilePath_;
@@ -53,6 +53,7 @@ private:
     QString cpuFreq_;
     QStringList sourceFiles_;
     QList<QProcess*> processes_;
+    QString processErrorMessage_;
 };
 
 #endif // ARDUINOBUILDER_H
